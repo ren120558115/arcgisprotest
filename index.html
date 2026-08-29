@@ -25,44 +25,255 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
 <header>
 <h1>逐句学歌 · 通用版</h1>
 <div class="sub">支持 MP3/M4A/AAC/WAV + LRC/SRT/VTT/ASS/SSA/JSON/TXT</div>
-<label>选择歌曲<input id="audioFile" type="file"></label>
-<label>选择歌词<input id="lyricFile" type="file"></label>
+
+<label>选择歌曲
+<input id="audioFile" type="file"></label>
+
+<label>选择歌词
+<input id="lyricFile" type="file"></label>
+
 <audio id="audio" controls></audio>
+
 <div class="bar">
 <button id="loopBtn" class="blue">单句循环：开</button>
-<select id="speed"><option value=".5">0.5×</option><option value=".75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option></select>
+<select id="speed">
+<option value=".5">0.5×</option>
+<option value=".75">0.75×</option>
+<option value="1" selected>1×</option>
+<option value="1.25">1.25×</option>
+<option value="1.5">1.5×</option>
+</select>
 <span id="status" class="small">请先导入歌曲和歌词</span>
 </div>
+
 <div class="bar">
-<span>当前句：<b id="idx">--</b></span><span>起点：<b id="curStart">--</b></span>
-<button id="minus1">−1.0秒</button><button id="minus02">−0.2秒</button><button id="plus02">+0.2秒</button><button id="plus1">+1.0秒</button><button id="replay">重听</button>
+<span>当前句：<b id="idx">--</b></span>
+<span>开始：<b id="curStart">--</b></span>
+<span>结束：<b id="curEnd">--</b></span>
+<button id="replay">重听</button>
 </div>
-<div class="bar"><button id="setNow">把当前播放时间设为本句起点</button><button id="exportJson">导出 JSON</button><button id="exportLrc">导出 LRC</button></div>
+
+<div class="bar">
+<b>调开始：</b>
+<button id="sminus1">−1.0秒</button>
+<button id="sminus02">−0.2秒</button>
+<button id="splus02">+0.2秒</button>
+<button id="splus1">+1.0秒</button>
+<button id="setStartNow">当前时间→开始</button>
+</div>
+
+<div class="bar">
+<b>调结束：</b>
+<button id="eminus1">−1.0秒</button>
+<button id="eminus02">−0.2秒</button>
+<button id="eplus02">+0.2秒</button>
+<button id="eplus1">+1.0秒</button>
+<button id="setEndNow">当前时间→结束</button>
+</div>
+
+<div class="bar">
+<button id="exportJson">导出 JSON</button>
+<button id="exportLrc">导出 LRC</button>
+</div>
 </header>
-<main><div class="note">TXT 没有时间轴时，会按每句 3 秒生成初始时间，之后可逐句调整；JSON 可保存英文、中文、谐音三行结构。</div><div id="list"></div></main>
-<footer><button id="prev">上一句</button><button id="next">下一句</button></footer>
+
+<main>
+<div class="note">
+TXT 没有时间轴时，会按每句 3 秒生成初始时间。每句开始/结束时间可独立调整；单句循环严格按该句开始→结束播放。
+</div>
+<div id="list"></div>
+</main>
+
+<footer>
+<button id="prev">上一句</button>
+<button id="next">下一句</button>
+</footer>
+
 <script>
-const audio=document.getElementById('audio'), list=document.getElementById('list');let lines=[],current=-1,loopLine=true,audioURL=null;
+const audio=document.getElementById('audio'), list=document.getElementById('list');
+let lines=[], current=-1, loopLine=true, audioURL=null;
+
 function esc(s){return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function secFromClock(s){let p=s.trim().replace(',', '.').split(':').map(Number);if(p.length===3)return p[0]*3600+p[1]*60+p[2];if(p.length===2)return p[0]*60+p[1];return Number(p[0])||0}
-function normalize(){lines=lines.filter(x=>x&&(x.en||x.zh||x.py||'').trim()!=='').map(x=>({en:x.en||'',zh:x.zh||'',py:x.py||'',start:Number(x.start)||0,end:x.end==null?null:Number(x.end)})).sort((a,b)=>a.start-b.start);for(let i=0;i<lines.length;i++){if(lines[i].end==null||!(lines[i].end>lines[i].start))lines[i].end=(i+1<lines.length)?lines[i+1].start:lines[i].start+4}}
-function parseLRC(t){let out=[];t.split(/\r?\n/).forEach(line=>{let tags=[...line.matchAll(/\[(\d{1,3}):(\d{1,2}(?:\.\d+)?)\]/g)];if(!tags.length)return;let text=line.replace(/\[[^\]]+\]/g,'').trim();tags.forEach(m=>out.push({start:Number(m[1])*60+Number(m[2]),en:text}))});return out}
-function parseSRTVTT(t){let out=[];let blocks=t.replace(/^WEBVTT.*\n/i,'').trim().split(/\n\s*\n/);blocks.forEach(b=>{let ls=b.split(/\r?\n/).filter(Boolean),ti=ls.findIndex(x=>x.includes('-->'));if(ti<0)return;let [a,b2]=ls[ti].split('-->').map(x=>x.trim().split(/\s+/)[0]);let text=ls.slice(ti+1).join(' ').replace(/<[^>]+>/g,'').trim();out.push({start:secFromClock(a),end:secFromClock(b2),en:text})});return out}
-function parseASS(t){let out=[];t.split(/\r?\n/).forEach(line=>{if(!/^Dialogue:/i.test(line))return;let parts=line.replace(/^Dialogue:\s*/i,'').split(',');if(parts.length<10)return;let text=parts.slice(9).join(',').replace(/\{[^}]*\}/g,'').replace(/\\N/g,' ').trim();out.push({start:secFromClock(parts[1]),end:secFromClock(parts[2]),en:text})});return out}
-function parseJSON(t){let o=JSON.parse(t),arr=Array.isArray(o)?o:(o.lyrics||o.lines||[]);return arr.map(x=>({start:Number(x.start??x.time??0),end:x.end==null?null:Number(x.end),en:x.en??x.text??x.lyric??'',zh:x.zh??x.cn??x.translation??'',py:x.py??x.phonetic??x.pinyin??''}))}
-function parseTXT(t){return t.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).map((x,i)=>({start:i*3,en:x}))}
-function render(){list.innerHTML='';lines.forEach((x,i)=>{let b=document.createElement('button');b.className='r';b.innerHTML='<div class=e>'+esc(x.en)+'</div>'+(x.zh?'<div class=z>'+esc(x.zh)+'</div>':'')+(x.py?'<div class=p>'+esc(x.py)+'</div>':'')+'<div class=t>起点 '+x.start.toFixed(2)+'s · 结束 '+x.end.toFixed(2)+'s</div>';b.onclick=()=>playLine(i);list.appendChild(b)});status.textContent='已载入 '+lines.length+' 句'}
-function selectLine(i,scroll=true){if(i<0||i>=lines.length)return;current=i;[...list.children].forEach((r,j)=>r.classList.toggle('on',j===i));idx.textContent=(i+1)+' / '+lines.length;curStart.textContent=lines[i].start.toFixed(2)+' 秒';if(scroll)list.children[i].scrollIntoView({behavior:'smooth',block:'center'})}
-function playLine(i){if(!audio.src){alert('请先选择歌曲');return}if(!lines.length){alert('请先选择歌词');return}selectLine(i);audio.currentTime=Math.max(0,lines[i].start);audio.play()}
-function adjust(d){if(current<0){if(!lines.length)return;selectLine(0)}lines[current].start=Math.max(0,Math.round((lines[current].start+d)*100)/100);if(current>0&&lines[current-1].end>lines[current].start)lines[current-1].end=lines[current].start;if(current+1<lines.length)lines[current].end=Math.max(lines[current].start+.1,lines[current+1].start);render();selectLine(current,false);playLine(current)}
-function download(name,text,type='text/plain'){let blob=new Blob([text],{type}),u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),500)}
+function secFromClock(s){
+  let p=s.trim().replace(',', '.').split(':').map(Number);
+  if(p.length===3)return p[0]*3600+p[1]*60+p[2];
+  if(p.length===2)return p[0]*60+p[1];
+  return Number(p[0])||0;
+}
+function normalize(){
+  lines=lines.filter(x=>x && (x.en||x.zh||x.py||'').trim()!=='')
+    .map((x,i)=>({en:x.en||'',zh:x.zh||'',py:x.py||'',start:Number(x.start)||0,end:x.end==null?null:Number(x.end)}))
+    .sort((a,b)=>a.start-b.start);
+  for(let i=0;i<lines.length;i++){
+    if(lines[i].end==null || !(lines[i].end>lines[i].start))
+      lines[i].end=(i+1<lines.length)?lines[i+1].start:lines[i].start+4;
+  }
+}
+function parseLRC(t){
+  let out=[];
+  t.split(/\r?\n/).forEach(line=>{
+    let tags=[...line.matchAll(/\[(\d{1,3}):(\d{1,2}(?:\.\d+)?)\]/g)];
+    if(!tags.length)return;
+    let text=line.replace(/\[[^\]]+\]/g,'').trim();
+    tags.forEach(m=>out.push({start:Number(m[1])*60+Number(m[2]),en:text}));
+  });
+  return out;
+}
+function parseSRTVTT(t){
+  let out=[];
+  let blocks=t.replace(/^WEBVTT.*\n/i,'').trim().split(/\n\s*\n/);
+  blocks.forEach(b=>{
+    let ls=b.split(/\r?\n/).filter(Boolean);
+    let ti=ls.findIndex(x=>x.includes('-->'));
+    if(ti<0)return;
+    let [a,b2]=ls[ti].split('-->').map(x=>x.trim().split(/\s+/)[0]);
+    let text=ls.slice(ti+1).join(' ').replace(/<[^>]+>/g,'').trim();
+    out.push({start:secFromClock(a),end:secFromClock(b2),en:text});
+  });
+  return out;
+}
+function parseASS(t){
+  let out=[];
+  t.split(/\r?\n/).forEach(line=>{
+    if(!/^Dialogue:/i.test(line))return;
+    let parts=line.replace(/^Dialogue:\s*/i,'').split(',');
+    if(parts.length<10)return;
+    let start=secFromClock(parts[1]), end=secFromClock(parts[2]);
+    let text=parts.slice(9).join(',').replace(/\{[^}]*\}/g,'').replace(/\\N/g,' ').trim();
+    out.push({start,end,en:text});
+  });
+  return out;
+}
+function parseJSON(t){
+  let o=JSON.parse(t), arr=Array.isArray(o)?o:(o.lyrics||o.lines||[]);
+  return arr.map(x=>({
+    start:Number(x.start??x.time??0),
+    end:x.end==null?null:Number(x.end),
+    en:x.en??x.text??x.lyric??'',
+    zh:x.zh??x.cn??x.translation??'',
+    py:x.py??x.phonetic??x.pinyin??''
+  }));
+}
+function parseTXT(t){
+  let raw=t.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  let out=[];
+  raw.forEach((x,i)=>out.push({start:i*3,en:x}));
+  return out;
+}
+function render(){
+  list.innerHTML='';
+  lines.forEach((x,i)=>{
+    let b=document.createElement('button');
+    b.className='r'; b.dataset.i=i;
+    b.innerHTML='<div class=e>'+esc(x.en)+'</div>'+
+      (x.zh?'<div class=z>'+esc(x.zh)+'</div>':'')+
+      (x.py?'<div class=p>'+esc(x.py)+'</div>':'')+
+      '<div class=t>起点 '+x.start.toFixed(2)+'s · 结束 '+x.end.toFixed(2)+'s</div>';
+    b.onclick=()=>playLine(i);
+    list.appendChild(b);
+  });
+  document.getElementById('status').textContent='已载入 '+lines.length+' 句';
+}
+function selectLine(i,scroll=true){
+  if(i<0||i>=lines.length)return;
+  current=i;
+  [...list.children].forEach((r,j)=>r.classList.toggle('on',j===i));
+  idx.textContent=(i+1)+' / '+lines.length;
+  curStart.textContent=lines[i].start.toFixed(2)+' 秒';
+  curEnd.textContent=lines[i].end.toFixed(2)+' 秒';
+  if(scroll)list.children[i].scrollIntoView({behavior:'smooth',block:'center'});
+}
+function playLine(i){
+  if(!audio.src){alert('请先选择歌曲');return}
+  if(!lines.length){alert('请先选择歌词');return}
+  selectLine(i);
+  audio.currentTime=Math.max(0,lines[i].start);
+  audio.play();
+}
+function adjustStart(d){
+  if(current<0){if(!lines.length)return;selectLine(0)}
+  lines[current].start=Math.max(0,Math.round((lines[current].start+d)*100)/100);
+  if(lines[current].start>=lines[current].end) lines[current].start=Math.max(0,lines[current].end-0.1);
+  render(); selectLine(current,false); playLine(current);
+}
+function adjustEnd(d){
+  if(current<0){if(!lines.length)return;selectLine(0)}
+  lines[current].end=Math.max(lines[current].start+0.1,Math.round((lines[current].end+d)*100)/100);
+  render(); selectLine(current,false); playLine(current);
+}
+function setStartToCurrent(){
+  if(!lines.length)return;
+  if(current<0)selectLine(0,false);
+  let t=Math.round(audio.currentTime*100)/100;
+  if(t>=lines[current].end)t=Math.max(0,lines[current].end-0.1);
+  lines[current].start=t;
+  render();selectLine(current,false);
+}
+function setEndToCurrent(){
+  if(!lines.length)return;
+  if(current<0)selectLine(0,false);
+  let t=Math.round(audio.currentTime*100)/100;
+  if(t<=lines[current].start)t=lines[current].start+0.1;
+  lines[current].end=t;
+  render();selectLine(current,false);
+}
+function download(name,text,type='text/plain'){
+  let blob=new Blob([text],{type}),u=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),500);
+}
 function lrcTime(s){let m=Math.floor(s/60),x=(s-m*60).toFixed(2).padStart(5,'0');return '['+String(m).padStart(2,'0')+':'+x+']'}
-audioFile.onchange=()=>{let f=audioFile.files&&audioFile.files[0];if(!f)return;if(audioURL)URL.revokeObjectURL(audioURL);audioURL=URL.createObjectURL(f);audio.src=audioURL;status.textContent='歌曲：'+f.name+(lines.length?' · 歌词 '+lines.length+'句':'')};
-lyricFile.onchange=async()=>{let f=lyricFile.files&&lyricFile.files[0];if(!f)return;let t=await f.text(),n=(f.name||'').toLowerCase();try{if(n.endsWith('.lrc'))lines=parseLRC(t);else if(n.endsWith('.srt')||n.endsWith('.vtt'))lines=parseSRTVTT(t);else if(n.endsWith('.ass')||n.endsWith('.ssa'))lines=parseASS(t);else if(n.endsWith('.json'))lines=parseJSON(t);else if(n.endsWith('.txt'))lines=parseTXT(t);else if(/\[\d{1,3}:\d{1,2}(?:\.\d+)?\]/.test(t))lines=parseLRC(t);else if(/-->/.test(t))lines=parseSRTVTT(t);else if(/^Dialogue:/mi.test(t))lines=parseASS(t);else if(/^\s*[\[{]/.test(t))lines=parseJSON(t);else lines=parseTXT(t);normalize();render();if(lines.length)selectLine(0,false)}catch(e){alert('歌词文件解析失败：'+e.message)}};
-loopBtn.onclick=()=>{loopLine=!loopLine;loopBtn.textContent='单句循环：'+(loopLine?'开':'关');loopBtn.classList.toggle('blue',loopLine)};speed.onchange=()=>audio.playbackRate=Number(speed.value);minus1.onclick=()=>adjust(-1);minus02.onclick=()=>adjust(-.2);plus02.onclick=()=>adjust(.2);plus1.onclick=()=>adjust(1);replay.onclick=()=>playLine(current<0?0:current);prev.onclick=()=>playLine(Math.max(0,current<=0?0:current-1));next.onclick=()=>playLine(Math.min(lines.length-1,current<0?0:current+1));
-setNow.onclick=()=>{if(!lines.length)return;if(current<0)selectLine(0,false);lines[current].start=Math.round(audio.currentTime*100)/100;if(current>0)lines[current-1].end=lines[current].start;if(current+1<lines.length)lines[current].end=lines[current+1].start;render();selectLine(current,false)};
-exportJson.onclick=()=>download('lyrics-calibrated.json',JSON.stringify({title:'',artist:'',lyrics:lines},null,2),'application/json');exportLrc.onclick=()=>download('lyrics-calibrated.lrc',lines.map(x=>lrcTime(x.start)+(x.en||x.zh||'')).join('\n'),'text/plain');
-audio.ontimeupdate=()=>{if(current<0||!lines.length)return;let end=lines[current].end;if(audio.currentTime>=end-.04){if(loopLine){audio.currentTime=lines[current].start;audio.play()}else audio.pause()}};
+
+audioFile.onchange=()=>{
+  let f=audioFile.files&&audioFile.files[0]; if(!f)return;
+  if(audioURL)URL.revokeObjectURL(audioURL);
+  audioURL=URL.createObjectURL(f); audio.src=audioURL;
+  status.textContent='歌曲：'+f.name+(lines.length?' · 歌词 '+lines.length+'句':'');
+};
+lyricFile.onchange=async()=>{
+  let f=lyricFile.files&&lyricFile.files[0]; if(!f)return;
+  let t=await f.text(), n=(f.name||'').toLowerCase();
+  try{
+    if(n.endsWith('.lrc'))lines=parseLRC(t);
+    else if(n.endsWith('.srt')||n.endsWith('.vtt'))lines=parseSRTVTT(t);
+    else if(n.endsWith('.ass')||n.endsWith('.ssa'))lines=parseASS(t);
+    else if(n.endsWith('.json'))lines=parseJSON(t);
+    else if(n.endsWith('.txt'))lines=parseTXT(t);
+    else{
+      if(/\[\d{1,3}:\d{1,2}(?:\.\d+)?\]/.test(t))lines=parseLRC(t);
+      else if(/-->/.test(t))lines=parseSRTVTT(t);
+      else if(/^Dialogue:/mi.test(t))lines=parseASS(t);
+      else if(/^\s*[\[{]/.test(t))lines=parseJSON(t);
+      else lines=parseTXT(t);
+    }
+    normalize(); render(); if(lines.length)selectLine(0,false);
+  }catch(e){alert('歌词文件解析失败：'+e.message)}
+};
+
+loopBtn.onclick=()=>{loopLine=!loopLine;loopBtn.textContent='单句循环：'+(loopLine?'开':'关');loopBtn.classList.toggle('blue',loopLine)};
+speed.onchange=()=>audio.playbackRate=Number(speed.value);
+sminus1.onclick=()=>adjustStart(-1);sminus02.onclick=()=>adjustStart(-.2);splus02.onclick=()=>adjustStart(.2);splus1.onclick=()=>adjustStart(1);
+eminus1.onclick=()=>adjustEnd(-1);eminus02.onclick=()=>adjustEnd(-.2);eplus02.onclick=()=>adjustEnd(.2);eplus1.onclick=()=>adjustEnd(1);
+setStartNow.onclick=setStartToCurrent;
+setEndNow.onclick=setEndToCurrent;
+replay.onclick=()=>playLine(current<0?0:current);
+prev.onclick=()=>playLine(Math.max(0,current<=0?0:current-1));
+next.onclick=()=>playLine(Math.min(lines.length-1,current<0?0:current+1));
+exportJson.onclick=()=>{
+  let obj={title:'',artist:'',lyrics:lines};
+  download('lyrics-calibrated.json',JSON.stringify(obj,null,2),'application/json');
+};
+exportLrc.onclick=()=>{
+  let txt=lines.map(x=>lrcTime(x.start)+(x.en||x.zh||'')).join('\n');
+  download('lyrics-calibrated.lrc',txt,'text/plain');
+};
+audio.ontimeupdate=()=>{
+  if(current<0||!lines.length)return;
+  let end=lines[current].end;
+  if(audio.currentTime>=end-0.04){
+    if(loopLine){audio.currentTime=lines[current].start;audio.play()}
+    else audio.pause();
+  }
+};
 </script>
 </body>
 </html>

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<link rel="manifest" href="manifest.webmanifest">
+<title>逐句学歌</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--text:#111827;--muted:#6b7280;--blue:#2563eb;--active:#e8f0ff}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif}
+header{position:sticky;top:0;z-index:5;background:#fffffff2;backdrop-filter:blur(12px);padding:12px;border-bottom:1px solid #ddd}
+h1{font-size:20px;margin:0}.artist{font-size:13px;color:var(--muted);margin:3px 0 9px}
+audio{width:100%;height:40px}.bar{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px;align-items:center}
+button,select,label.pick{font:inherit;padding:8px 10px;border-radius:10px;border:1px solid #bbb;background:white;color:#111;cursor:pointer}
+button.primary{background:var(--blue);color:white;border-color:var(--blue)}
+input[type=file]{display:none}.status{font-size:12px;color:var(--muted);margin-left:auto}
+main{max-width:780px;margin:auto;padding:10px 10px 90px}.help{background:#fff7d6;border:1px solid #eadb9b;border-radius:12px;padding:10px;font-size:13px;line-height:1.5;margin-bottom:8px}
+.row{width:100%;display:block;text-align:left;background:var(--card);color:var(--text);border:1px solid #ddd;border-radius:13px;padding:12px;margin:8px 0}
+.row.active{background:var(--active);border:2px solid var(--blue)}.en{font-size:17px;font-weight:700;line-height:1.4}.zh{font-size:15px;margin-top:5px}.py{font-size:14px;color:var(--muted);margin-top:5px}.t{font-size:11px;color:#999;margin-top:6px}
+footer{position:fixed;left:0;right:0;bottom:0;background:#fffffff2;backdrop-filter:blur(12px);border-top:1px solid #ddd;padding:8px 10px calc(8px + env(safe-area-inset-bottom));display:flex;justify-content:center;gap:8px}
+footer button{min-width:85px}
+</style>
+</head>
+<body>
+<header>
+<h1 id="title">逐句学歌</h1><div class="artist" id="artist">第一次使用请导入歌曲和歌词文件</div>
+<audio id="audio" controls preload="metadata"></audio>
+<div class="bar">
+<label class="pick">选择 MP3<input id="audioFile" type="file" accept="audio/*"></label>
+<label class="pick">选择歌词<input id="lyricsFile" type="file" accept=".json,application/json"></label>
+<button id="loopBtn" class="primary">单句循环：开</button>
+<select id="speed"><option value=".5">0.5×</option><option value=".75">0.75×</option><option value="1" selected>1.0×</option><option value="1.25">1.25×</option></select>
+<span class="status" id="status">未载入</span>
+</div>
+</header>
+<main>
+<div class="help" id="help">第一次打开：依次选择你的 MP3 和 <b>.song.json</b> 歌词文件。导入后会保存在本机浏览器里，以后从主屏幕打开即可继续使用。</div>
+<div id="list"></div>
+</main>
+<footer><button id="prev">上一句</button><button id="replay">重听本句</button><button id="next">下一句</button></footer>
+<script>
+const audio=document.getElementById('audio'), list=document.getElementById('list'), status=document.getElementById('status');
+let song=null,current=-1,loopLine=true,whole=false,audioURL=null;
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('song-trainer',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function dbSet(k,v){const db=await openDB();return new Promise((res,rej)=>{const tx=db.transaction('kv','readwrite');tx.objectStore('kv').put(v,k);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)})}
+async function dbGet(k){const db=await openDB();return new Promise((res,rej)=>{const r=db.transaction('kv').objectStore('kv').get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+function fmt(t){const m=Math.floor(t/60),s=(t%60).toFixed(1).padStart(4,'0');return m+':'+s}
+function render(){if(!song)return;document.getElementById('title').textContent=song.title||'逐句学歌';document.getElementById('artist').textContent=song.artist||'';list.innerHTML='';song.lyrics.forEach((x,i)=>{const b=document.createElement('button');b.className='row';b.innerHTML=`<div class="en">${x.en}</div><div class="zh">${x.zh||''}</div><div class="py">${x.py||''}</div><div class="t">${fmt(x.start)}–${fmt(x.end)}</div>`;b.onclick=()=>playLine(i);list.appendChild(b)});document.getElementById('help').style.display='none';status.textContent='共 '+song.lyrics.length+' 句'}
+function active(i,scroll=true){current=i;[...list.children].forEach((r,j)=>r.classList.toggle('active',j===i));status.textContent='第 '+(i+1)+' / '+song.lyrics.length+' 句';if(scroll&&list.children[i])list.children[i].scrollIntoView({behavior:'smooth',block:'center'})}
+function playLine(i){if(!song||!audio.src)return;whole=false;active(i);audio.currentTime=song.lyrics[i].start;audio.play()}
+audio.ontimeupdate=()=>{if(!song)return;if(whole){let i=-1;for(let j=song.lyrics.length-1;j>=0;j--)if(audio.currentTime>=song.lyrics[j].start){i=j;break}if(i>=0&&i!==current)active(i,false)}else if(current>=0&&audio.currentTime>=song.lyrics[current].end-.04){if(loopLine){audio.currentTime=song.lyrics[current].start;audio.play()}else audio.pause()}};
+document.getElementById('loopBtn').onclick=e=>{loopLine=!loopLine;e.target.textContent='单句循环：'+(loopLine?'开':'关');e.target.classList.toggle('primary',loopLine)};
+document.getElementById('speed').onchange=e=>audio.playbackRate=+e.target.value;
+document.getElementById('prev').onclick=()=>song&&playLine(Math.max(0,current<=0?0:current-1));document.getElementById('next').onclick=()=>song&&playLine(Math.min(song.lyrics.length-1,current<0?0:current+1));document.getElementById('replay').onclick=()=>song&&playLine(current<0?0:current);
+document.getElementById('audioFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;await dbSet('audio',f);loadAudio(f)};document.getElementById('lyricsFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;const obj=JSON.parse(await f.text());await dbSet('lyrics',obj);song=obj;render()};
+function loadAudio(blob){if(audioURL)URL.revokeObjectURL(audioURL);audioURL=URL.createObjectURL(blob);audio.src=audioURL}
+(async()=>{try{const [a,l]=await Promise.all([dbGet('audio'),dbGet('lyrics')]);if(a)loadAudio(a);if(l){song=l;render()}}catch(e){console.log(e)}})();if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+</script>
+</body></html>

@@ -27,7 +27,7 @@ footer button{min-width:85px}
 <h1 id="title">逐句学歌</h1><div class="artist" id="artist">第一次使用请导入歌曲和歌词文件</div>
 <audio id="audio" controls preload="metadata"></audio>
 <div class="bar">
-<label class="pick">选择 MP3<input id="audioFile" type="file" accept="audio/*"></label>
+<label class="pick">选择歌曲<input id="audioFile" type="file"></label>
 <label class="pick">选择歌词<input id="lyricsFile" type="file" accept=".json,application/json"></label>
 <button id="loopBtn" class="primary">单句循环：开</button>
 <select id="speed"><option value=".5">0.5×</option><option value=".75">0.75×</option><option value="1" selected>1.0×</option><option value="1.25">1.25×</option></select>
@@ -42,19 +42,36 @@ footer button{min-width:85px}
 <script>
 const audio=document.getElementById('audio'), list=document.getElementById('list'), status=document.getElementById('status');
 let song=null,current=-1,loopLine=true,whole=false,audioURL=null;
+
 function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('song-trainer',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
 async function dbSet(k,v){const db=await openDB();return new Promise((res,rej)=>{const tx=db.transaction('kv','readwrite');tx.objectStore('kv').put(v,k);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)})}
 async function dbGet(k){const db=await openDB();return new Promise((res,rej)=>{const r=db.transaction('kv').objectStore('kv').get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+
 function fmt(t){const m=Math.floor(t/60),s=(t%60).toFixed(1).padStart(4,'0');return m+':'+s}
-function render(){if(!song)return;document.getElementById('title').textContent=song.title||'逐句学歌';document.getElementById('artist').textContent=song.artist||'';list.innerHTML='';song.lyrics.forEach((x,i)=>{const b=document.createElement('button');b.className='row';b.innerHTML=`<div class="en">${x.en}</div><div class="zh">${x.zh||''}</div><div class="py">${x.py||''}</div><div class="t">${fmt(x.start)}–${fmt(x.end)}</div>`;b.onclick=()=>playLine(i);list.appendChild(b)});document.getElementById('help').style.display='none';status.textContent='共 '+song.lyrics.length+' 句'}
+function render(){
+ if(!song)return; document.getElementById('title').textContent=song.title||'逐句学歌';document.getElementById('artist').textContent=song.artist||'';
+ list.innerHTML=''; song.lyrics.forEach((x,i)=>{const b=document.createElement('button');b.className='row';b.innerHTML=`<div class="en">${x.en}</div><div class="zh">${x.zh||''}</div><div class="py">${x.py||''}</div><div class="t">${fmt(x.start)}–${fmt(x.end)}</div>`;b.onclick=()=>playLine(i);list.appendChild(b)});
+ document.getElementById('help').style.display='none'; status.textContent='共 '+song.lyrics.length+' 句';
+}
 function active(i,scroll=true){current=i;[...list.children].forEach((r,j)=>r.classList.toggle('active',j===i));status.textContent='第 '+(i+1)+' / '+song.lyrics.length+' 句';if(scroll&&list.children[i])list.children[i].scrollIntoView({behavior:'smooth',block:'center'})}
 function playLine(i){if(!song||!audio.src)return;whole=false;active(i);audio.currentTime=song.lyrics[i].start;audio.play()}
 audio.ontimeupdate=()=>{if(!song)return;if(whole){let i=-1;for(let j=song.lyrics.length-1;j>=0;j--)if(audio.currentTime>=song.lyrics[j].start){i=j;break}if(i>=0&&i!==current)active(i,false)}else if(current>=0&&audio.currentTime>=song.lyrics[current].end-.04){if(loopLine){audio.currentTime=song.lyrics[current].start;audio.play()}else audio.pause()}};
 document.getElementById('loopBtn').onclick=e=>{loopLine=!loopLine;e.target.textContent='单句循环：'+(loopLine?'开':'关');e.target.classList.toggle('primary',loopLine)};
 document.getElementById('speed').onchange=e=>audio.playbackRate=+e.target.value;
-document.getElementById('prev').onclick=()=>song&&playLine(Math.max(0,current<=0?0:current-1));document.getElementById('next').onclick=()=>song&&playLine(Math.min(song.lyrics.length-1,current<0?0:current+1));document.getElementById('replay').onclick=()=>song&&playLine(current<0?0:current);
-document.getElementById('audioFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;await dbSet('audio',f);loadAudio(f)};document.getElementById('lyricsFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;const obj=JSON.parse(await f.text());await dbSet('lyrics',obj);song=obj;render()};
+document.getElementById('prev').onclick=()=>song&&playLine(Math.max(0,current<=0?0:current-1));
+document.getElementById('next').onclick=()=>song&&playLine(Math.min(song.lyrics.length-1,current<0?0:current+1));
+document.getElementById('replay').onclick=()=>song&&playLine(current<0?0:current);
+document.getElementById('audioFile').onchange=async e=>{
+ const f=e.target.files[0]; if(!f)return;
+ const name=(f.name||'').toLowerCase();
+ if(!(f.type&&f.type.startsWith('audio/')) && !name.endsWith('.mp3') && !name.endsWith('.m4a') && !name.endsWith('.aac') && !name.endsWith('.wav')){
+   alert('请选择 MP3、M4A、AAC 或 WAV 音频文件'); e.target.value=''; return;
+ }
+ await dbSet('audio',f); loadAudio(f);
+};
+document.getElementById('lyricsFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;const obj=JSON.parse(await f.text());await dbSet('lyrics',obj);song=obj;render()};
 function loadAudio(blob){if(audioURL)URL.revokeObjectURL(audioURL);audioURL=URL.createObjectURL(blob);audio.src=audioURL}
-(async()=>{try{const [a,l]=await Promise.all([dbGet('audio'),dbGet('lyrics')]);if(a)loadAudio(a);if(l){song=l;render()}}catch(e){console.log(e)}})();if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+(async()=>{try{const [a,l]=await Promise.all([dbGet('audio'),dbGet('lyrics')]);if(a)loadAudio(a);if(l){song=l;render()}}catch(e){console.log(e)}})();
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script>
 </body></html>

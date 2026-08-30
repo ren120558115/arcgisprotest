@@ -3,90 +3,116 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>逐句学歌 · 通用版</title>
+<title>逐句学歌 · 多歌曲版</title>
 <style>
+*{box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",Arial,sans-serif;margin:0;background:#f4f5f7;color:#111}
-header{position:sticky;top:0;z-index:10;background:#fff;padding:10px;border-bottom:1px solid #ddd}
-h1{font-size:20px;margin:0 0 4px}.sub{font-size:12px;color:#666;margin-bottom:7px}
-input,audio{width:100%;margin:5px 0}
+header{position:sticky;top:0;z-index:10;background:#fff;padding:9px;border-bottom:1px solid #ddd}
+h1{font-size:19px;margin:0 0 5px}.sub{font-size:11px;color:#666;margin-bottom:6px}
 .bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
-button,select,label{font:inherit;padding:8px 10px;border:1px solid #bbb;border-radius:9px;background:#fff;color:#111}
-.blue{background:#2563eb;color:#fff;border-color:#2563eb}
-main{padding:8px 8px 105px;max-width:820px;margin:auto}
-.note{font-size:13px;background:#eaf4ff;border:1px solid #bad7ff;border-radius:10px;padding:8px;line-height:1.45}
-.r{display:block;width:100%;text-align:left;background:#fff;border:1px solid #ddd;border-radius:12px;padding:11px;margin:7px 0}
+button,select,label{font:inherit;padding:7px 9px;border:1px solid #bbb;border-radius:9px;background:#fff;color:#111}
+select#songSelect{min-width:160px;max-width:58vw}
+.blue{background:#2563eb;color:#fff;border-color:#2563eb}.danger{color:#b91c1c}.modeLearning{background:#111827;color:#fff;border-color:#111827}.modeCalibrate{background:#f59e0b;border-color:#f59e0b}
+audio{width:100%;margin-top:7px}
+input[type=file]{display:none}
+main{padding:7px 7px 92px;max-width:820px;margin:auto}
+.note{font-size:12px;background:#eaf4ff;border:1px solid #bad7ff;border-radius:10px;padding:8px;line-height:1.4}
+.r{display:block;width:100%;background:#fff;border:1px solid #ddd;border-radius:12px;margin:7px 0;overflow:hidden}
 .r.on{background:#e8f0ff;border:2px solid #2563eb}
-.e{font-size:17px;font-weight:700}.z{margin-top:4px}.p,.t{margin-top:4px;color:#666;font-size:13px}
-footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #ddd;padding:8px 8px calc(8px + env(safe-area-inset-bottom));display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
+.summary{padding:10px}.e{font-size:16px;font-weight:700}.z{margin-top:4px}.p,.t{margin-top:4px;color:#666;font-size:13px}
+.editbox{display:none;border-top:1px solid #e5e7eb;padding:8px;background:#fafafa}.r.on .editbox{display:block}
+.editrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0}.editrow b{min-width:38px}.timeval{font-weight:700;min-width:58px}
+.done{width:100%;background:#2563eb;color:#fff;border-color:#2563eb}
+body.study .calibrateOnly{display:none!important} body.study .r.on .editbox{display:none!important}
+footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #ddd;padding:7px 8px calc(7px + env(safe-area-inset-bottom));display:flex;justify-content:center;gap:8px}
 .small{font-size:12px;color:#666}
-.r{padding:0;overflow:hidden}
-.summary{padding:12px}
-.editbox{display:none;border-top:1px solid #e5e7eb;padding:10px;background:#fafafa}
-.r.on .editbox{display:block}
-.editrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:7px 0}
-.editrow b{min-width:42px}
-.timeval{font-weight:700;min-width:62px}
-.done{width:100%;background:#2563eb;color:white;border-color:#2563eb;margin-top:6px}
-@media(max-width:600px){header{padding:8px}h1{font-size:18px}.sub{font-size:11px}label{padding:6px 8px}.bar{gap:5px}button,select{padding:7px 9px}main{padding:6px 6px 80px}.summary{padding:10px}.e{font-size:16px}.editbox{padding:8px}}
-body.study .calibrateOnly{display:none!important}
-body.study .r.on .editbox{display:none!important}
-.modeLearning{background:#111827;color:#fff;border-color:#111827}
-.modeCalibrate{background:#f59e0b;color:#111;border-color:#f59e0b}
 </style>
 </head>
-<body>
+<body class="study">
 <header>
-<h1>逐句学歌 · 通用版</h1>
-<div class="sub">支持常用音频/歌词格式 · 学习/校准模式可切换</div>
-<label>选择歌曲<input id="audioFile" type="file"></label>
-<label>选择歌词<input id="lyricFile" type="file"></label>
+<h1>逐句学歌 · 多歌曲版</h1>
+<div class="sub">歌曲、歌词、校准时间都保存在本机浏览器</div>
+<div class="bar">
+<select id="songSelect"><option value="">暂无歌曲</option></select>
+<label class="blue">＋ 添加歌曲<input id="addAudio" type="file"></label>
+<button id="deleteSong" class="danger">删除</button>
+</div>
 <audio id="audio" controls></audio>
-<div class="bar"><button id="modeBtn" class="modeLearning">模式：学习</button><button id="loopBtn" class="blue">单句循环：开</button><select id="speed"><option value=".5">0.5×</option><option value=".75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option></select><span id="status" class="small">请先导入歌曲和歌词</span></div>
-<div class="bar calibrateOnly"><button id="exportJson">导出 JSON</button><button id="exportLrc">导出 LRC</button><button id="clearSave">清除自动保存</button></div>
+<div class="bar">
+<button id="modeBtn" class="modeLearning">模式：学习</button>
+<button id="loopBtn" class="blue">单句循环：开</button>
+<select id="speed"><option value=".5">0.5×</option><option value=".75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option></select>
+<span id="status" class="small">请添加歌曲</span>
+</div>
+<div class="bar calibrateOnly">
+<label>导入/替换歌词<input id="lyricFile" type="file"></label>
+<button id="exportJson">导出 JSON</button>
+<button id="exportLrc">导出 LRC</button>
+</div>
 </header>
-<main><div class="note">TXT 没有时间轴时，会按每句 3 秒生成初始时间。每句开始/结束时间可独立调整；单句循环严格按该句开始→结束播放。</div><div id="list"></div></main>
+
+<main>
+<div class="note">添加歌曲后会保存到本机。校准模式可调整每句开始/结束；“调好，下一句”会把下一句开始时间设为上一句结束时间。</div>
+<div id="list"></div>
+</main>
 <footer><button id="prev">上一句</button><button id="next">下一句</button></footer>
+
 <script>
-const audio=document.getElementById('audio'), list=document.getElementById('list');
-let lines=[], current=-1, loopLine=true, audioURL=null;
-const SAVE_KEY='song-trainer-autosave-v2';
-const MODE_KEY='song-trainer-mode-v1';
-let appMode=localStorage.getItem(MODE_KEY)||'study';
-function applyMode(){const study=appMode==='study';document.body.classList.toggle('study',study);modeBtn.textContent='模式：'+(study?'学习':'校准');modeBtn.className=study?'modeLearning':'modeCalibrate';}
-function toggleMode(){appMode=appMode==='study'?'calibrate':'study';localStorage.setItem(MODE_KEY,appMode);applyMode();}
-function autoSave(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({savedAt:Date.now(),lyrics:lines.map((x,i)=>({...x,index:i}))}));}catch(e){}}
-function autoLoad(){try{const o=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(o&&Array.isArray(o.lyrics)&&o.lyrics.length){lines=o.lyrics;normalize(true);render();selectLine(0,false);status.textContent='已恢复上次自动保存 · '+lines.length+'句';return true;}}catch(e){}return false;}
+const $=id=>document.getElementById(id);
+const audio=$('audio'), list=$('list'), songSelect=$('songSelect'), status=$('status');
+let songs=[], currentSong=null, lines=[], current=-1, loopLine=true, audioURL=null;
+let appMode=localStorage.getItem('song-trainer-mode-v2')||'study';
+
+function dbOpen(){return new Promise((res,rej)=>{const r=indexedDB.open('song-trainer-library',1);r.onupgradeneeded=()=>r.result.createObjectStore('songs',{keyPath:'id'});r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function dbAll(){const db=await dbOpen();return new Promise((res,rej)=>{const r=db.transaction('songs').objectStore('songs').getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error)})}
+async function dbPut(song){const db=await dbOpen();return new Promise((res,rej)=>{const tx=db.transaction('songs','readwrite');tx.objectStore('songs').put(song);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)})}
+async function dbDelete(id){const db=await dbOpen();return new Promise((res,rej)=>{const tx=db.transaction('songs','readwrite');tx.objectStore('songs').delete(id);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)})}
+
 function esc(s){return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function secFromClock(s){let p=s.trim().replace(',', '.').split(':').map(Number);if(p.length===3)return p[0]*3600+p[1]*60+p[2];if(p.length===2)return p[0]*60+p[1];return Number(p[0])||0;}
-function normalize(preserveOrder=false){lines=lines.filter(x=>x && (x.en||x.zh||x.py||'').trim()!=='').map((x,i)=>({index:Number.isInteger(x.index)?x.index:i,en:x.en||'',zh:x.zh||'',py:x.py||'',start:Number(x.start)||0,end:x.end==null?null:Number(x.end)}));if(!preserveOrder)lines.sort((a,b)=>a.start-b.start);else lines.sort((a,b)=>a.index-b.index);for(let i=0;i<lines.length;i++){lines[i].index=i;if(lines[i].end==null || !(lines[i].end>lines[i].start))lines[i].end=(i+1<lines.length)?Math.max(lines[i].start+0.1,lines[i+1].start):lines[i].start+4;}}
-function parseLRC(t){let out=[];t.split(/\r?\n/).forEach(line=>{let tags=[...line.matchAll(/\[(\d{1,3}):(\d{1,2}(?:\.\d+)?)\]/g)];if(!tags.length)return;let text=line.replace(/\[[^\]]+\]/g,'').trim();tags.forEach(m=>out.push({start:Number(m[1])*60+Number(m[2]),en:text}));});return out;}
-function parseSRTVTT(t){let out=[];let blocks=t.replace(/^WEBVTT.*\n/i,'').trim().split(/\n\s*\n/);blocks.forEach(b=>{let ls=b.split(/\r?\n/).filter(Boolean);let ti=ls.findIndex(x=>x.includes('-->'));if(ti<0)return;let [a,b2]=ls[ti].split('-->').map(x=>x.trim().split(/\s+/)[0]);let text=ls.slice(ti+1).join(' ').replace(/<[^>]+>/g,'').trim();out.push({start:secFromClock(a),end:secFromClock(b2),en:text});});return out;}
-function parseASS(t){let out=[];t.split(/\r?\n/).forEach(line=>{if(!/^Dialogue:/i.test(line))return;let parts=line.replace(/^Dialogue:\s*/i,'').split(',');if(parts.length<10)return;let start=secFromClock(parts[1]), end=secFromClock(parts[2]);let text=parts.slice(9).join(',').replace(/\{[^}]*\}/g,'').replace(/\\N/g,' ').trim();out.push({start,end,en:text});});return out;}
-function parseJSON(t){let o=JSON.parse(t), arr=Array.isArray(o)?o:(o.lyrics||o.lines||[]);return arr.map((x,i)=>({index:Number.isInteger(x.index)?x.index:i,start:Number(x.start??x.time??0),end:x.end==null?null:Number(x.end),en:x.en??x.text??x.lyric??'',zh:x.zh??x.cn??x.translation??'',py:x.py??x.phonetic??x.pinyin??''}));}
-function parseTXT(t){let raw=t.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);let out=[];raw.forEach((x,i)=>out.push({start:i*3,en:x}));return out;}
-function render(){list.innerHTML='';lines.forEach((x,i)=>{let b=document.createElement('div');b.className='r';b.dataset.i=i;b.innerHTML='<div class="summary" onclick="openLine('+i+')"><div class=e>'+esc(x.en)+'</div>'+(x.zh?'<div class=z>'+esc(x.zh)+'</div>':'')+(x.py?'<div class=p>'+esc(x.py)+'</div>':'')+'<div class=t>'+x.start.toFixed(2)+' → '+x.end.toFixed(2)+' 秒</div></div><div class="editbox calibrateOnly"><div class="editrow"><b>开始</b><span class="timeval">'+x.start.toFixed(2)+'s</span><button onclick="event.stopPropagation();editStart('+i+',-.2)">−0.2</button><button onclick="event.stopPropagation();editStart('+i+',.2)">+0.2</button><button onclick="event.stopPropagation();setStartAtNow('+i+')">当前时间</button></div><div class="editrow"><b>结束</b><span class="timeval">'+x.end.toFixed(2)+'s</span><button onclick="event.stopPropagation();editEnd('+i+',-.2)">−0.2</button><button onclick="event.stopPropagation();editEnd('+i+',.2)">+0.2</button><button onclick="event.stopPropagation();setEndAtNow('+i+')">当前时间</button></div><div class="editrow"><button onclick="event.stopPropagation();playLine('+i+')">重听本句</button><button class="done" onclick="event.stopPropagation();finishLine('+i+')">✓ 调好，下一句</button></div></div>';list.appendChild(b);});}
-function openLine(i){selectLine(i);if(audio.src)playLine(i);}
-function editStart(i,d){current=i;lines[i].start=Math.max(0,Math.round((lines[i].start+d)*100)/100);if(lines[i].start>=lines[i].end)lines[i].start=Math.max(0,lines[i].end-.1);render();selectLine(i,false);autoSave();playLine(i);}
-function editEnd(i,d){current=i;lines[i].end=Math.max(lines[i].start+.1,Math.round((lines[i].end+d)*100)/100);render();selectLine(i,false);autoSave();playLine(i);}
-function setStartAtNow(i){current=i;let t=Math.round(audio.currentTime*100)/100;if(t>=lines[i].end)t=Math.max(0,lines[i].end-.1);lines[i].start=t;render();selectLine(i,false);autoSave();}
-function setEndAtNow(i){current=i;let t=Math.round(audio.currentTime*100)/100;if(t<=lines[i].start)t=lines[i].start+.1;lines[i].end=t;render();selectLine(i,false);autoSave();}
-function finishLine(i){if(i+1>=lines.length){render();selectLine(i,false);return;}const n=i+1;lines[n].start=Math.round(lines[i].end*100)/100;if(!(lines[n].end>lines[n].start))lines[n].end=Math.round((lines[n].start+3)*100)/100;render();autoSave();selectLine(n);if(audio.src)playLine(n);}
-function selectLine(i,scroll=true){if(i<0||i>=lines.length)return;current=i;[...list.children].forEach((r,j)=>r.classList.toggle('on',j===i));if(scroll)list.children[i].scrollIntoView({behavior:'smooth',block:'center'});}
-function playLine(i){if(!audio.src){alert('请先选择歌曲');return}if(!lines.length){alert('请先选择歌词');return}selectLine(i);audio.currentTime=Math.max(0,lines[i].start);audio.play();}
-function download(name,text,type='text/plain'){let blob=new Blob([text],{type}),u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),500);}
+function secFromClock(s){let p=s.trim().replace(',','.').split(':').map(Number);if(p.length===3)return p[0]*3600+p[1]*60+p[2];if(p.length===2)return p[0]*60+p[1];return Number(p[0])||0}
+function parseLRC(t){let out=[];t.split(/\r?\n/).forEach(line=>{let tags=[...line.matchAll(/\[(\d{1,3}):(\d{1,2}(?:\.\d+)?)\]/g)];if(!tags.length)return;let text=line.replace(/\[[^\]]+\]/g,'').trim();tags.forEach(m=>out.push({start:+m[1]*60+ +m[2],en:text}))});return out}
+function parseSRTVTT(t){let out=[];t.replace(/^WEBVTT.*\n/i,'').trim().split(/\n\s*\n/).forEach(b=>{let ls=b.split(/\r?\n/).filter(Boolean),i=ls.findIndex(x=>x.includes('-->'));if(i<0)return;let [a,z]=ls[i].split('-->').map(x=>x.trim().split(/\s+/)[0]);out.push({start:secFromClock(a),end:secFromClock(z),en:ls.slice(i+1).join(' ').replace(/<[^>]+>/g,'').trim()})});return out}
+function parseASS(t){let out=[];t.split(/\r?\n/).forEach(line=>{if(!/^Dialogue:/i.test(line))return;let p=line.replace(/^Dialogue:\s*/i,'').split(',');if(p.length<10)return;out.push({start:secFromClock(p[1]),end:secFromClock(p[2]),en:p.slice(9).join(',').replace(/\{[^}]*\}/g,'').replace(/\\N/g,' ').trim()})});return out}
+function parseJSON(t){let o=JSON.parse(t),a=Array.isArray(o)?o:(o.lyrics||o.lines||[]);return a.map((x,i)=>({index:Number.isInteger(x.index)?x.index:i,start:Number(x.start??x.time??0),end:x.end==null?null:Number(x.end),en:x.en??x.text??x.lyric??'',zh:x.zh??x.cn??x.translation??'',py:x.py??x.phonetic??x.pinyin??''}))}
+function parseTXT(t){return t.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).map((x,i)=>({start:i*3,en:x}))}
+function normalize(preserve=false){lines=lines.filter(x=>x&&(x.en||x.zh||x.py||'').trim()).map((x,i)=>({index:Number.isInteger(x.index)?x.index:i,en:x.en||'',zh:x.zh||'',py:x.py||'',start:Number(x.start)||0,end:x.end==null?null:Number(x.end)}));if(preserve)lines.sort((a,b)=>a.index-b.index);else lines.sort((a,b)=>a.start-b.start);for(let i=0;i<lines.length;i++){lines[i].index=i;if(!(lines[i].end>lines[i].start))lines[i].end=i+1<lines.length?Math.max(lines[i].start+.1,lines[i+1].start):lines[i].start+4}}
+
+async function parseLyricsFile(f){let t=await f.text(),n=(f.name||'').toLowerCase(),isJson=false;
+ if(n.endsWith('.lrc'))lines=parseLRC(t);else if(n.endsWith('.srt')||n.endsWith('.vtt'))lines=parseSRTVTT(t);else if(n.endsWith('.ass')||n.endsWith('.ssa'))lines=parseASS(t);else if(n.endsWith('.json')){lines=parseJSON(t);isJson=true}else if(n.endsWith('.txt'))lines=parseTXT(t);else if(/\[\d{1,3}:\d{1,2}(?:\.\d+)?\]/.test(t))lines=parseLRC(t);else if(/-->/.test(t))lines=parseSRTVTT(t);else if(/^Dialogue:/mi.test(t))lines=parseASS(t);else if(/^\s*[\[{]/.test(t)){lines=parseJSON(t);isJson=true}else lines=parseTXT(t);
+ normalize(isJson)
+}
+
+function applyMode(){let s=appMode==='study';document.body.classList.toggle('study',s);$('modeBtn').textContent='模式：'+(s?'学习':'校准');$('modeBtn').className=s?'modeLearning':'modeCalibrate'}
+function renderSongs(){songSelect.innerHTML=songs.length?'':'<option value="">暂无歌曲</option>';songs.sort((a,b)=>(a.name||'').localeCompare(b.name||''));songs.forEach(s=>{let o=document.createElement('option');o.value=s.id;o.textContent=s.name;songSelect.appendChild(o)});if(currentSong)songSelect.value=currentSong.id}
+function render(){list.innerHTML='';lines.forEach((x,i)=>{let b=document.createElement('div');b.className='r';b.innerHTML='<div class="summary" onclick="openLine('+i+')"><div class=e>'+esc(x.en)+'</div>'+(x.zh?'<div class=z>'+esc(x.zh)+'</div>':'')+(x.py?'<div class=p>'+esc(x.py)+'</div>':'')+'<div class=t>'+x.start.toFixed(2)+' → '+x.end.toFixed(2)+' 秒</div></div><div class="editbox calibrateOnly"><div class=editrow><b>开始</b><span class=timeval>'+x.start.toFixed(2)+'s</span><button onclick="editStart('+i+',-.2)">−0.2</button><button onclick="editStart('+i+',.2)">+0.2</button><button onclick="setStartNow('+i+')">当前时间</button></div><div class=editrow><b>结束</b><span class=timeval>'+x.end.toFixed(2)+'s</span><button onclick="editEnd('+i+',-.2)">−0.2</button><button onclick="editEnd('+i+',.2)">+0.2</button><button onclick="setEndNow('+i+')">当前时间</button></div><div class=editrow><button onclick="playLine('+i+')">重听本句</button><button class=done onclick="finishLine('+i+')">✓ 调好，下一句</button></div></div>';list.appendChild(b)})}
+function selectLine(i,scroll=true){if(i<0||i>=lines.length)return;current=i;[...list.children].forEach((r,j)=>r.classList.toggle('on',j===i));if(scroll)list.children[i].scrollIntoView({behavior:'smooth',block:'center'})}
+function openLine(i){selectLine(i);if(audio.src)playLine(i)}
+function playLine(i){if(!audio.src){alert('当前歌曲未加载');return}if(!lines.length){alert('当前歌曲没有歌词');return}selectLine(i);audio.currentTime=Math.max(0,lines[i].start);audio.play()}
+async function saveCurrent(){if(!currentSong)return;currentSong.lyrics=lines.map((x,i)=>({...x,index:i}));currentSong.updatedAt=Date.now();await dbPut(currentSong);let j=songs.findIndex(x=>x.id===currentSong.id);if(j>=0)songs[j]=currentSong}
+function editStart(i,d){current=i;lines[i].start=Math.max(0,Math.round((lines[i].start+d)*100)/100);if(lines[i].start>=lines[i].end)lines[i].start=Math.max(0,lines[i].end-.1);render();selectLine(i,false);saveCurrent();playLine(i)}
+function editEnd(i,d){current=i;lines[i].end=Math.max(lines[i].start+.1,Math.round((lines[i].end+d)*100)/100);render();selectLine(i,false);saveCurrent();playLine(i)}
+function setStartNow(i){current=i;let t=Math.round(audio.currentTime*100)/100;if(t>=lines[i].end)t=lines[i].end-.1;lines[i].start=Math.max(0,t);render();selectLine(i,false);saveCurrent()}
+function setEndNow(i){current=i;let t=Math.round(audio.currentTime*100)/100;if(t<=lines[i].start)t=lines[i].start+.1;lines[i].end=t;render();selectLine(i,false);saveCurrent()}
+function finishLine(i){if(i+1>=lines.length){saveCurrent();return}let n=i+1;lines[n].start=Math.round(lines[i].end*100)/100;if(!(lines[n].end>lines[n].start))lines[n].end=lines[n].start+3;render();saveCurrent();selectLine(n);if(audio.src)playLine(n)}
+
+async function loadSong(id){let s=songs.find(x=>x.id===id);if(!s)return;currentSong=s;lines=(s.lyrics||[]).map(x=>({...x}));current=-1;if(audioURL)URL.revokeObjectURL(audioURL);audioURL=s.audio?URL.createObjectURL(s.audio):null;audio.src=audioURL||'';render();renderSongs();localStorage.setItem('song-trainer-last-song',id);status.textContent=s.name+' · '+lines.length+'句'}
+async function refreshLibrary(){songs=await dbAll();renderSongs();let last=localStorage.getItem('song-trainer-last-song');if(last&&songs.some(x=>x.id===last))await loadSong(last);else if(songs.length)await loadSong(songs[0].id)}
+
+$('addAudio').onchange=async()=>{let f=$('addAudio').files[0];if(!f)return;let id='s'+Date.now()+Math.random().toString(36).slice(2,7);let name=(f.name||'新歌曲').replace(/\.[^.]+$/,'');let song={id,name,audio:f,lyrics:[],createdAt:Date.now(),updatedAt:Date.now()};await dbPut(song);songs.push(song);await loadSong(id);$('addAudio').value='';setTimeout(()=>$('lyricFile').click(),150)}
+$('lyricFile').onchange=async()=>{let f=$('lyricFile').files[0];if(!f||!currentSong)return;try{await parseLyricsFile(f);render();await saveCurrent();status.textContent=currentSong.name+' · 歌词 '+lines.length+'句'}catch(e){alert('歌词解析失败：'+e.message)}$('lyricFile').value=''}
+songSelect.onchange=()=>loadSong(songSelect.value)
+$('deleteSong').onclick=async()=>{if(!currentSong)return;if(!confirm('删除《'+currentSong.name+'》？'))return;let id=currentSong.id;await dbDelete(id);songs=songs.filter(x=>x.id!==id);currentSong=null;lines=[];list.innerHTML='';audio.removeAttribute('src');audio.load();renderSongs();if(songs.length)await loadSong(songs[0].id);else status.textContent='请添加歌曲'}
+$('modeBtn').onclick=()=>{appMode=appMode==='study'?'calibrate':'study';localStorage.setItem('song-trainer-mode-v2',appMode);applyMode()}
+$('loopBtn').onclick=()=>{loopLine=!loopLine;$('loopBtn').textContent='单句循环：'+(loopLine?'开':'关');$('loopBtn').classList.toggle('blue',loopLine)}
+$('speed').onchange=()=>audio.playbackRate=+$('speed').value
+$('prev').onclick=()=>playLine(Math.max(0,current<=0?0:current-1));$('next').onclick=()=>playLine(Math.min(lines.length-1,current<0?0:current+1))
+function download(name,text,type='text/plain'){let b=new Blob([text],{type}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),500)}
 function lrcTime(s){let m=Math.floor(s/60),x=(s-m*60).toFixed(2).padStart(5,'0');return '['+String(m).padStart(2,'0')+':'+x+']'}
-audioFile.onchange=()=>{let f=audioFile.files&&audioFile.files[0];if(!f)return;if(audioURL)URL.revokeObjectURL(audioURL);audioURL=URL.createObjectURL(f);audio.src=audioURL;status.textContent='歌曲：'+f.name+(lines.length?' · 歌词 '+lines.length+'句':'');};
-lyricFile.onchange=async()=>{let f=lyricFile.files&&lyricFile.files[0];if(!f)return;let t=await f.text(), n=(f.name||'').toLowerCase();try{let isJson=false;if(n.endsWith('.lrc'))lines=parseLRC(t);else if(n.endsWith('.srt')||n.endsWith('.vtt'))lines=parseSRTVTT(t);else if(n.endsWith('.ass')||n.endsWith('.ssa'))lines=parseASS(t);else if(n.endsWith('.json')){lines=parseJSON(t);isJson=true;}else if(n.endsWith('.txt'))lines=parseTXT(t);else{if(/\[\d{1,3}:\d{1,2}(?:\.\d+)?\]/.test(t))lines=parseLRC(t);else if(/-->/.test(t))lines=parseSRTVTT(t);else if(/^Dialogue:/mi.test(t))lines=parseASS(t);else if(/^\s*[\[{]/.test(t)){lines=parseJSON(t);isJson=true;}else lines=parseTXT(t);}normalize(isJson);render();autoSave();if(lines.length)selectLine(0,false);}catch(e){alert('歌词文件解析失败：'+e.message)}};
-modeBtn.onclick=toggleMode;
-loopBtn.onclick=()=>{loopLine=!loopLine;loopBtn.textContent='单句循环：'+(loopLine?'开':'关');loopBtn.classList.toggle('blue',loopLine)};
-speed.onchange=()=>audio.playbackRate=Number(speed.value);
-prev.onclick=()=>playLine(Math.max(0,current<=0?0:current-1));
-next.onclick=()=>playLine(Math.min(lines.length-1,current<0?0:current+1));
-exportJson.onclick=()=>{let obj={format:'song-trainer-json',version:2,title:'',artist:'',lyrics:lines.map((x,i)=>({...x,index:i}))};download('lyrics-calibrated.json',JSON.stringify(obj,null,2),'application/json');};
-exportLrc.onclick=()=>{let txt=lines.map(x=>lrcTime(x.start)+(x.en||x.zh||'')).join('\n');download('lyrics-calibrated.lrc',txt,'text/plain');};
-audio.ontimeupdate=()=>{if(current<0||!lines.length)return;let end=lines[current].end;if(audio.currentTime>=end-0.04){if(loopLine){audio.currentTime=lines[current].start;audio.play()}else audio.pause();}};
-clearSave.onclick=()=>{localStorage.removeItem(SAVE_KEY);status.textContent='已清除自动保存';};
-autoLoad();applyMode();
+$('exportJson').onclick=()=>{if(!currentSong)return;download((currentSong.name||'lyrics')+'.json',JSON.stringify({format:'song-trainer-json',version:3,title:currentSong.name,lyrics:lines.map((x,i)=>({...x,index:i}))},null,2),'application/json')}
+$('exportLrc').onclick=()=>{if(!currentSong)return;download((currentSong.name||'lyrics')+'.lrc',lines.map(x=>lrcTime(x.start)+(x.en||x.zh||'')).join('\n'))}
+audio.ontimeupdate=()=>{if(current<0||!lines.length)return;let e=lines[current].end;if(audio.currentTime>=e-.04){if(loopLine){audio.currentTime=lines[current].start;audio.play()}else audio.pause()}}
+
+applyMode();refreshLibrary();
 </script>
 </body>
 </html>
